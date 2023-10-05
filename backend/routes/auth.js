@@ -40,5 +40,36 @@ router.post(
     res.json({ authToken });
   }
 );
-
+router.post(
+  "/login",
+  [
+    body("email").isEmail(),
+    body("password").exists().isLength({
+      min: 5,
+    }),
+  ],
+  async (req, res) => {
+    const { email, password } = req.body;
+    try {
+      let user = await User.findOne({ email: email });
+      if (!user) {
+        return res.status(400).json({ error: "Wrong Credentials" });
+      }
+      const passwordCompare = await bcrypt.compare(password, user.password);
+      if (!passwordCompare) {
+        return res.status(400).json({ error: "Wrong Credentials" });
+      }
+      const data = {
+        user: {
+          id: user.id,
+        },
+      };
+      const authToken = jwt.sign(data, JWT_SECRET);
+      res.json({ authToken });
+    } catch (error) {
+      console.error(error.message);
+      res.status(500).send("Internal server error");
+    }
+  }
+);
 module.exports = router;
